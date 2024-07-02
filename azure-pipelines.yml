@@ -1,24 +1,37 @@
+trigger:
+  - main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  mavenOptions: '-B -DskipTests'
+
 stages:
-- stage: Build # Define a build stage
- jobs:
- - job: BuildTests # Define a job within the build stage
- pool: # Define the agent pool to run the job on
- vmImage: 'ubuntu-latest'
- steps:
- - script: mvn clean install # Run maven clean and install commands
- displayName: 'Build and Install Tests'
- - publish: $(System.DefaultWorkingDirectory)/target/*.jar # Publish the
-generated JAR file as artifact
-- stage: Test # Define a test stage
- jobs:
- - job: RunTests # Define a job within the test stage
- dependsOn: Build # Define dependency on the Build stage
- pool: # Define the agent pool to run the job on
- vmImage: 'ubuntu-latest'
- steps:
- - download: $(Build.ArtifactStagingDirectory) # Download the JAR artifact from
-the Build stage
- - script: mvn test # Run maven test command to execute regression tests
- displayName: 'Run Regression Tests'
- - publish: $(System.DefaultWorkingDirectory)/target/surefire-reports/*.xml #
-Publish test reports as artifacts
+- stage: Build
+  jobs:
+  - job: BuildJob
+    steps:
+    - task: Maven@3
+      inputs:
+        mavenPomFile: 'pom.xml'
+        goals: 'clean install'
+        options: '$(mavenOptions)'
+
+- stage: Test
+  jobs:
+  - job: UnitTests
+    steps:
+    - task: Maven@3
+      inputs:
+        mavenPomFile: 'pom.xml'
+        goals: 'test'
+        options: '-Dtest=*UnitTest'
+
+  - job: RegressionTests
+    steps:
+    - task: Maven@3
+      inputs:
+        mavenPomFile: 'pom.xml'
+        goals: 'test'
+        options: '-Dtest=*RegressionTest'
